@@ -1,0 +1,43 @@
+#!/bin/bash
+# 🎙️ Voz para Texto pt-BR - Lançador
+# Ativa o ambiente virtual e inicia o STT
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$DIR"
+
+# Ativa virtualenv
+source "$DIR/venv/bin/activate" 2>/dev/null || {
+    echo "❌ Virtualenv não encontrado em $DIR/venv"
+    echo "   Rode: python3 -m venv venv && source venv/bin/activate && pip install faster-whisper sounddevice pyperclip numpy"
+    exit 1
+}
+
+# Verifica GPU
+HAS_CUDA=0
+if command -v nvidia-smi &>/dev/null; then
+    HAS_CUDA=1
+fi
+
+# Modelo: usa small se tiver GPU, base se CPU
+if [ "$HAS_CUDA" = "1" ]; then
+    MODEL="base"
+    DEVICE="cuda"
+else
+    MODEL="tiny"
+    DEVICE="cpu"
+fi
+
+# Processa argumentos
+ARGS=("$@")
+if [ ${#ARGS[@]} -eq 0 ]; then
+    ARGS=("--model" "$MODEL" "--device" "$DEVICE")
+fi
+
+echo ""
+echo "╔═══════════════════════════════════════╗"
+echo "║   🎙️  Voz para Texto pt-BR            ║"
+echo "║   Ctrl+C para parar                   ║"
+echo "╚═══════════════════════════════════════╝"
+echo ""
+
+exec python3 "$DIR/stt.py" "${ARGS[@]}"

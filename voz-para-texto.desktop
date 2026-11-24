@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Voz para Texto pt-BR
+Comment=Transcrição de voz para texto em português brasileiro com GPU
+Exec=/home/gazerah/Documents/voice_recog/voz-para-texto
+TryExec=/home/gazerah/Documents/voice_recog/voz-para-texto
+Icon=/home/gazerah/Documents/voice_recog/icon-mic.png
+Terminal=true
+Categories=Utility;TextEditor;Office;
+Keywords=speech;voice;transcription;stt;portuguese;pt-br;
+StartupNotify=true

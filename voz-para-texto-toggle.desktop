@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Voz para Texto (Toggle)
+Comment=Liga/Desliga a transcrição de voz para texto
+Exec=/home/gazerah/Documents/voice_recog/voz-toggle
+TryExec=/home/gazerah/Documents/voice_recog/voz-toggle
+Icon=/home/gazerah/Documents/voice_recog/icon-mic.png
+Terminal=false
+Categories=Utility;
+StartupNotify=true

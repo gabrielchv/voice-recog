@@ -1,0 +1,119 @@
+#!/bin/bash
+# 🎙️ Voz para Texto pt-BR - Toggle (liga/desliga)
+# Pode ser associado a um atalho de teclado no Pop!_OS
+#
+# Uso:
+#   ./voz-toggle          # Liga se desligado, desliga se ligado
+#   ./voz-toggle on       # Força ligar
+#   ./voz-toggle off      # Força desligar
+#   ./voz-toggle status   # Mostra status atual
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+PIDFILE="/tmp/voz-para-texto.pid"
+TERMINAL_EXEC=""
+
+# Descobre terminal do sistema
+if command -v gnome-terminal &>/dev/null; then
+    TERMINAL_EXEC="gnome-terminal --window --title='🎙️ Voz para Texto' --"
+elif command -v kgx &>/dev/null; then
+    TERMINAL_EXEC="kgx --title '🎙️ Voz para Texto' --"
+elif command -v x-terminal-emulator &>/dev/null; then
+    TERMINAL_EXEC="x-terminal-emulator -e"
+else
+    # Fallback: tenta alguns terminais comuns
+    for term in alacritty kitty terminator xfce4-terminal xterm; do
+        if command -v "$term" &>/dev/null; then
+            TERMINAL_EXEC="$term -e"
+            break
+        fi
+    done
+fi
+
+send_notification() {
+    local title="$1"
+    local message="$2"
+    local icon="$3"
+    if command -v notify-send &>/dev/null; then
+        notify-send -t 3000 "$title" "$message" ${icon:+-i "$icon"}
+    fi
+    echo "$message"
+}
+
+start_stt() {
+    # Verifica se já está rodando
+    if [ -f "$PIDFILE" ]; then
+        OLD_PID=$(cat "$PIDFILE")
+        if kill -0 "$OLD_PID" 2>/dev/null; then
+            echo "✅ Voz para Texto já está rodando (PID $OLD_PID)"
+            return 0
+        fi
+        rm -f "$PIDFILE"
+    fi
+
+    # Abre em um terminal
+    if [ -n "$TERMINAL_EXEC" ]; then
+        $TERMINAL_EXEC "$DIR/voz-para-texto" &
+        STT_PID=$!
+        echo "$STT_PID" > "$PIDFILE"
+        send_notification "🎙️ Voz para Texto" "Ativado! Fale ao microfone." "microphone"
+    else
+        # Fallback: roda em background
+        "$DIR/voz-para-texto" --oneshot &
+        STT_PID=$!
+        echo "$STT_PID" > "$PIDFILE"
+        send_notification "🎙️ Voz para Texto" "Rodando em background (PID $STT_PID)" "microphone"
+    fi
+}
+
+stop_stt() {
+    if [ ! -f "$PIDFILE" ]; then
+        echo "ℹ️  Voz para Texto não está rodando."
+        return 0
+    fi
+
+    PID=$(cat "$PIDFILE")
+
+    # Tenta SIGTERM gentil primeiro
+    if kill -0 "$PID" 2>/dev/null; then
+        kill "$PID" 2>/dev/null
+        sleep 0.5
+        # Se não morreu, força
+        if kill -0 "$PID" 2>/dev/null; then
+            kill -9 "$PID" 2>/dev/null
+        fi
+    fi
+
+    rm -f "$PIDFILE"
+
+    # Também mata processos python do stt.py que ficaram órfãos
+    pkill -f "python3.*stt.py" 2>/dev/null
+
+    send_notification "🎙️ Voz para Texto" "Desativado." "microphone"
+}
+
+case "${1:-toggle}" in
+    on|start|liga)
+        start_stt
+        ;;
+    off|stop|desliga)
+        stop_stt
+        ;;
+    toggle)
+        if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+            stop_stt
+        else
+            start_stt
+        fi
+        ;;
+    status)
+        if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+            echo "🎙️  Status: LIGADO (PID $(cat "$PIDFILE"))"
+        else
+            echo "🎙️  Status: DESLIGADO"
+        fi
+        ;;
+    *)
+        echo "Uso: $0 {on|off|toggle|status}"
+        exit 1
+        ;;
+esac
